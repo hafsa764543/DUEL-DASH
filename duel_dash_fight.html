@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Duel Dash</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
+      background: url('duel_dash_background.png') no-repeat center center/cover;
+    }
+
+    #logo {
+      width: 180px;
+      margin-top: 20px;
+    }
+
+    h1 {
+      font-size: 40px;
+      margin: 10px;
+      text-shadow: 2px 2px 5px black;
+    }
+
+    #instructions {
+      background: rgba(0, 0, 0, 0.7);
+      margin: 20px auto;
+      padding: 20px;
+      width: 80%;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    #menu input, #menu button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+    }
+
+    #game {
+      margin-top: 20px;
+    }
+
+    .score, .round, .signal {
+      font-size: 24px;
+      margin: 10px;
+    }
+
+    .signal {
+      font-size: 40px;
+      margin: 20px;
+      text-shadow: 2px 2px 5px black;
+    }
+
+    #playAgainBtn {
+      display: none;
+      font-size: 18px;
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <img id="logo" src="logo.png" alt="Game Logo">
+  <h1>Duel Dash</h1>
+
+  <div id="instructions">
+    🎮 <strong>How to Play:</strong><br>
+    ➤ Player 1: Press <strong>A</strong><br>
+    ➤ Player 2: Press <strong>L</strong><br>
+    ➤ Wait for “FIGHT!” then hit fast<br>
+    ➤ First to reach 10 points wins!
+  </div>
+
+  <div id="menu">
+    <input type="text" id="player1Name" placeholder="Player 1 Name (A)">
+    <input type="text" id="player2Name" placeholder="Player 2 Name (L)">
+    <br>
+    <button onclick="startGame(false)">Play vs Player</button>
+    <button onclick="startGame(true)">Play vs AI</button>
+  </div>
+
+  <div id="game" style="display: none;">
+    <div class="round">Round: <span id="roundNumber">1</span></div>
+    <div class="score"><span id="nameA">A</span>: <span id="scoreA">0</span> | <span id="nameL">L</span>: <span id="scoreL">0</span></div>
+    <div class="signal" id="signal">Get Ready...</div>
+    <button id="playAgainBtn" onclick="resetGame()">🔁 Play Again</button>
+  </div>
+
+  <script>
+    let scoreA = 0, scoreL = 0, round = 1;
+    let ready = false, signaled = false, aiEnabled = false;
+    let player1 = "Player A", player2 = "Player L";
+    const maxPoints = 10;
+
+    function playBeep(freq = 500, duration = 150) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => osc.stop(), duration);
+    }
+
+    function updateUI() {
+      document.getElementById('scoreA').innerText = scoreA;
+      document.getElementById('scoreL').innerText = scoreL;
+      document.getElementById('roundNumber').innerText = round;
+    }
+
+    function showWinner() {
+      const signal = document.getElementById('signal');
+      signal.innerText = scoreA >= maxPoints ? `🎉 ${player1} Wins!` : `🏆 ${player2} Wins!`;
+      playBeep(900, 300);
+      document.getElementById('playAgainBtn').style.display = 'inline-block';
+    }
+
+    function countdownAndSignal() {
+      let countdown = 3;
+      const signalDiv = document.getElementById('signal');
+      signalDiv.innerText = countdown;
+
+      const interval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          signalDiv.innerText = countdown;
+        } else {
+          clearInterval(interval);
+          signalDiv.innerText = "FIGHT!";
+          playBeep(800, 200);
+          ready = true;
+          signaled = true;
+
+          if (aiEnabled) {
+            const aiDelay = Math.random() * 800 + 1500;
+            setTimeout(() => {
+              if (ready && signaled) {
+                scoreL++;
+                signalDiv.innerText = `🤖 ${player2} Wins!`;
+                playBeep(600, 200);
+                checkWinner();
+              }
+            }, aiDelay);
+          }
+        }
+      }, 1000);
+    }
+
+    function startRound() {
+      if (scoreA >= maxPoints || scoreL >= maxPoints) {
+        showWinner();
+        return;
+      }
+      ready = false;
+      signaled = false;
+      updateUI();
+      document.getElementById('signal').innerText = 'Get Ready...';
+      setTimeout(() => countdownAndSignal(), 1500);
+    }
+
+    function nextRound() {
+      round++;
+      updateUI();
+      setTimeout(startRound, 2000);
+    }
+
+    function checkWinner() {
+      updateUI();
+      if (scoreA >= maxPoints || scoreL >= maxPoints) {
+        showWinner();
+      } else {
+        ready = false;
+        signaled = false;
+        setTimeout(nextRound, 2000);
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (!ready || !signaled) return;
+
+      if (e.key === 'a' || e.key === 'A') {
+        scoreA++;
+        document.getElementById('signal').innerText = `${player1} Wins!`;
+        playBeep(750, 150);
+        checkWinner();
+      } else if (!aiEnabled && (e.key === 'l' || e.key === 'L')) {
+        scoreL++;
+        document.getElementById('signal').innerText = `${player2} Wins!`;
+        playBeep(600, 150);
+        checkWinner();
+      }
+    });
+
+    function resetGame() {
+      scoreA = 0;
+      scoreL = 0;
+      round = 1;
+      document.getElementById('playAgainBtn').style.display = 'none';
+      startRound();
+    }
+
+    function startGame(aiMode) {
+      aiEnabled = aiMode;
+      player1 = document.getElementById('player1Name').value || "Player A";
+      player2 = aiMode ? "AI Bot" : (document.getElementById('player2Name').value || "Player L");
+      document.getElementById('nameA').innerText = player1;
+      document.getElementById('nameL').innerText = player2;
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('instructions').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+      resetGame();
+    }
+  </script>
+</body>
+</html>
